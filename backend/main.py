@@ -8,11 +8,20 @@ import torch
 import torch.nn as nn
 from torchvision import models, transforms
 from fastapi.responses import FileResponse
-from model.gradcam_utils import generate_gradcam
 import cv2
 import numpy as np
 import tempfile
 import os
+import sys
+
+# Try to import gradcam utilities
+try:
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    from model.gradcam_utils import generate_gradcam
+    GRADCAM_AVAILABLE = True
+except ImportError:
+    GRADCAM_AVAILABLE = False
+    print("Warning: GradCAM utilities not available. GradCAM endpoint will be disabled.")
 
 app = FastAPI(title="MedBot")
 
@@ -94,6 +103,9 @@ async def gradcam(file: UploadFile = File(...)):
     """
     Returns a Grad-CAM heatmap image showing where the model focused.
     """
+    if not GRADCAM_AVAILABLE:
+        return JSONResponse({"error": "GradCAM functionality not available"}, status_code=501)
+    
     try:
         contents = await file.read()
         image = Image.open(io.BytesIO(contents)).convert("RGB")
